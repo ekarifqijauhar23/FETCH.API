@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Data</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e8f5e9; /* Warna latar belakang lembut */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #424242; /* Warna judul */
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #3f51b5; /* Warna latar belakang header */
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #fce4ec; /* Warna saat hover */
+        }
+
+        button {
+            background-color: #ff5722; /* Warna tombol */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #ff7043; /* Warna tombol saat hover */
+        }
+
+        #post-details {
+            background: #ffffff;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            display: none; /* Awalnya disembunyikan */
+        }
+
+        #post-list {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 10px;
+        }
+
+        #url-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #url-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px 0 0 8px;
+        }
+
+        #fetch-button {
+            padding: 10px 20px;
+            background-color: #2196f3; /* Warna tombol pencarian */
+            color: white;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #fetch-button:hover {
+            background-color: #42a5f5; /* Warna tombol pencarian saat hover */
+        }
+    </style>
+</head>
+<body>
+    <h1>Fetch Data</h1>
+
+    <div id="url-container">
+        <input type="text" id="url-input" placeholder="Enter users API URL..." value="https://jsonplaceholder.typicode.com/users">
+        <button id="fetch-button" onclick="fetchData()">Search</button>
+    </div>
+
+    <div id="user-section">
+        <table id="user-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Website</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="user-list"></tbody>
+        </table>
+    </div>
+    
+    <div id="post-details">
+        <h2>Posts</h2>
+        <ul id="post-list"></ul>
+        <button onclick="closeDetails()">Close</button>
+    </div>
+
+    <script>
+        let users = []; // Menyimpan data pengguna
+
+        async function fetchData() {
+            let url = document.getElementById('url-input').value; // Mendapatkan URL dari input
+
+            const postsMatch = url.match(/\/(\d+)\/posts$/);
+            if (postsMatch) {
+                const userId = postsMatch[1];
+                await fetchUserAndPosts(userId);
+            } else {
+                const idMatch = url.match(/\/(\d+)$/);
+                if (idMatch) {
+                    const userId = idMatch[1];
+                    await fetchUserById(userId);
+                } else {
+                    await fetchAllUsers(url);
+                }
+            }
+        }
+
+        async function fetchAllUsers(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                users = await response.json();
+                displayUsers(users);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        }
+
+        async function fetchUserAndPosts(userId) {
+            const userUrl = `https://jsonplaceholder.typicode.com/users/${userId}`;
+            const postsUrl = `https://jsonplaceholder.typicode.com/users/${userId}/posts`;
+
+            try {
+                const userResponse = await fetch(userUrl);
+                const postsResponse = await fetch(postsUrl);
+
+                if (!userResponse.ok || !postsResponse.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const user = await userResponse.json();
+                const posts = await postsResponse.json();
+
+                displaySingleUser(user);
+                displayUserPosts(posts);
+                document.getElementById('post-details').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching user and posts:', error);
+            }
+        }
+
+        async function fetchUserById(userId) {
+            const userUrl = `https://jsonplaceholder.typicode.com/users/${userId}`;
+
+            try {
+                const userResponse = await fetch(userUrl);
+
+                if (!userResponse.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const user = await userResponse.json();
+                displaySingleUser(user);
+                document.getElementById('post-details').style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching user:', error);
+            }
+        }
+
+        function displayUsers(userList) {
+            const userTableBody = document.getElementById('user-list');
+            userTableBody.innerHTML = '';
+
+            userList.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>${user.phone}</td>
+                    <td>${user.website}</td>
+                    <td><button onclick="fetchUserDetails(${user.id})">Detail</button></td>
+                `;
+                userTableBody.appendChild(row);
+            });
+        }
+
+        function displaySingleUser(user) {
+            const userTableBody = document.getElementById('user-list');
+            userTableBody.innerHTML = '';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.name}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>${user.phone}</td>
+                <td>${user.website}</td>
+                <td><button onclick="fetchUserDetails(${user.id})">Detail</button></td>
+            `;
+            userTableBody.appendChild(row);
+        }
+
+        async function fetchUserDetails(userId) {
+            const postsUrl = `https://jsonplaceholder.typicode.com/users/${userId}/posts`;
+
+            try {
+                const postsResponse = await fetch(postsUrl);
+
+                if (!postsResponse.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const posts = await postsResponse.json();
+                displayUserPosts(posts);
+                document.getElementById('post-details').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        }
+
+        function displayUserPosts(posts) {
+            const postList = document.getElementById('post-list');
+            postList.innerHTML = '';
+
+            posts.forEach(post => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <strong>${post.title}</strong>
+                    <p>${post.body}</p>
+                    <hr>
+                `;
+                postList.appendChild(listItem);
+            });
+        }
+
+        function closeDetails() {
+            document.getElementById('post-details').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
